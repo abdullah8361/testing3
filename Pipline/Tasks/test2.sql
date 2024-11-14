@@ -1,31 +1,30 @@
-WITH SalesData AS (
-    SELECT 
-        p.product_id,
-        p.product_name,
-        SUM(s.quantity_sold) AS total_quantity_sold
-    FROM 
-        sales s
-    JOIN 
-        products p ON s.product_id = p.product_id
-    WHERE 
-        s.sale_date >= DATEADD(month, -1, GETDATE())
-    GROUP BY 
-        p.product_id, p.product_name
-),
-RankedProducts AS (
+WITH LastMonthSales AS (
     SELECT 
         product_id,
-        product_name,
-        total_quantity_sold,
-        RANK() OVER (ORDER BY total_quantity_sold DESC) AS sales_rank
+        SUM(quantity) AS total_quantity
     FROM 
-        SalesData
+        sales
+    WHERE 
+        sale_date >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '1 month'
+        AND sale_date < DATE_TRUNC('month', CURRENT_DATE)
+    GROUP BY 
+        product_id
+),
+TopFiveProducts AS (
+    SELECT 
+        product_id,
+        total_quantity,
+        RANK() OVER (ORDER BY total_quantity DESC) AS product_rank
+    FROM 
+        LastMonthSales
 )
 SELECT 
-    product_id,
-    product_name,
-    total_quantity_sold
+    p.product_id,
+    p.product_name,
+    t.total_quantity
 FROM 
-    RankedProducts
+    TopFiveProducts t
+JOIN 
+    products p ON t.product_id = p.product_id
 WHERE 
-    sales_rank <= 5;= 5;
+    t.product_rank <= 5;
